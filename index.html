@@ -273,6 +273,29 @@
         const valLiftDropEnd = document.getElementById('valLiftDropEnd');
         const totalPrice = document.getElementById('totalPrice');
 
+        // HÀM CHUYỂN ĐỔI CHUỖI TIỀN TỆ (có dấu chấm phân cách nghìn, ký hiệu đ/VNĐ...) THÀNH SỐ
+        function parseMoney(val) {
+            if (val === null || val === undefined) return 0;
+            if (typeof val === 'number') return val; // PapaParse dynamicTyping đã tự nhận ra số thuần
+            let str = String(val).trim();
+            if (str === '') return 0;
+            // Bỏ tất cả ký tự không phải số, dấu chấm, dấu phẩy, dấu trừ
+            str = str.replace(/[^\d.,-]/g, '');
+            // Trường hợp dùng dấu chấm làm phân cách hàng nghìn (vd: 2.500.000) -> bỏ hết dấu chấm
+            // Trường hợp dùng dấu phẩy làm phân cách hàng nghìn (vd: 2,500,000) -> bỏ hết dấu phẩy
+            // Giữ lại dấu chấm/phẩy cuối cùng làm phân cách thập phân CHỈ KHI theo sau đúng 1-2 chữ số
+            const decimalMatch = str.match(/[.,](\d{1,2})$/);
+            if (decimalMatch && (str.match(/[.,]/g) || []).length === 1) {
+                // Có khả năng là số thập phân thật (vd: 1500.5) -> giữ nguyên, chỉ đổi dấu phẩy thành chấm
+                str = str.replace(',', '.');
+            } else {
+                // Là phân cách hàng nghìn -> bỏ hết dấu chấm/phẩy
+                str = str.replace(/[.,]/g, '');
+            }
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+        }
+
         // BƯỚC 3: HÀM KÉO & PARSE DỮ LIỆU TỪ GOOGLE SHEETS
         async function fetchAndParseCSV(url) {
             const response = await fetch(url);
@@ -305,14 +328,14 @@
                     region: row['Vùng (Region)'] || row['Phân vùng'] || row['Region'],
                     prices: {
                         "20DC": {
-                            trucking: Number(row['Trucking 20DC'] || 0),
-                            lift: Number(row['Nâng vỏ 20DC'] || row['Nâng 20DC'] || row['Nâng/Hạ 20DC'] || 0),
-                            drop: Number(row['Hạ vỏ 20DC'] || row['Hạ 20DC'] || row['Nâng/Hạ 20DC'] || 0)
+                            trucking: parseMoney(row['Trucking 20DC']),
+                            lift: parseMoney(row['Nâng vỏ 20DC'] || row['Nâng 20DC'] || row['Nâng/Hạ 20DC']),
+                            drop: parseMoney(row['Hạ vỏ 20DC'] || row['Hạ 20DC'] || row['Nâng/Hạ 20DC'])
                         },
                         "40HC": {
-                            trucking: Number(row['Trucking 40HC'] || 0),
-                            lift: Number(row['Nâng vỏ 40HC'] || row['Nâng 40HC'] || row['Nâng/Hạ 40HC'] || 0),
-                            drop: Number(row['Hạ vỏ 40HC'] || row['Hạ 40HC'] || row['Nâng/Hạ 40HC'] || 0)
+                            trucking: parseMoney(row['Trucking 40HC']),
+                            lift: parseMoney(row['Nâng vỏ 40HC'] || row['Nâng 40HC'] || row['Nâng/Hạ 40HC']),
+                            drop: parseMoney(row['Hạ vỏ 40HC'] || row['Hạ 40HC'] || row['Nâng/Hạ 40HC'])
                         }
                     }
                 })).filter(item => item.id); // bỏ qua dòng trống không có ID
@@ -336,8 +359,8 @@
                         name: row['Tên Hãng Tàu Khai Thác'] || row['Tên Hãng tàu'] || row['Tên Hãng Tàu'] || row['Hãng tàu'],
                         schedule: row['Lịch Chạy (ETD)'] || row['Lịch chạy'] || row['Lịch Chạy'] || "Liên hệ",
                         prices: {
-                            "20DC": Number(row['Cước Biển 20DC'] || row['Ocean Freight 20DC'] || row['Cước 20DC'] || 0),
-                            "40HC": Number(row['Cước Biển 40HC'] || row['Ocean Freight 40HC'] || row['Cước 40HC'] || 0)
+                            "20DC": parseMoney(row['Cước Biển 20DC'] || row['Ocean Freight 20DC'] || row['Cước 20DC']),
+                            "40HC": parseMoney(row['Cước Biển 40HC'] || row['Ocean Freight 40HC'] || row['Cước 40HC'])
                         }
                     });
                 });
