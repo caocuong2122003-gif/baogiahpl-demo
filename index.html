@@ -319,6 +319,17 @@
                     fetchAndParseCSV(URL_ROUTES)
                 ]);
 
+                // ===== DEBUG: In ra dữ liệu thô để kiểm tra tên cột / giá trị thật =====
+                console.log("=== RAW LOCATIONS (dòng đầu tiên) ===");
+                console.log(rawLocations[0]);
+                console.log("=== Tên các cột (keys) của Locations ===");
+                console.log(Object.keys(rawLocations[0] || {}));
+                console.log("=== RAW ROUTES (dòng đầu tiên) ===");
+                console.log(rawRoutes[0]);
+                console.log("=== Tên các cột (keys) của Routes ===");
+                console.log(Object.keys(rawRoutes[0] || {}));
+                // ===== HẾT DEBUG =====
+
                 // Map Sheet 1 vào dbLocations
                 // Tên cột thực tế trong Sheet "Locations":
                 // Mã ID | Tên Địa Điểm (Kho đi/về) | Vùng (Region) | Trucking 20DC | Nâng vỏ 20DC | Hạ vỏ 20DC | Trucking 40HC | Nâng vỏ 40HC | Hạ vỏ 40HC
