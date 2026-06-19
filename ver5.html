@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tính Cước FCL Tự Động Định Tuyến Tuyển Biển</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-card { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            body { background: white; color: black; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
+
+    <header class="bg-slate-900 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+                🚢 FCL Auto-Route Optimizer
+            </h1>
+            <span class="text-xs bg-emerald-600 text-white font-bold px-3 py-1 rounded-full" id="statusBadge">Đang tải dữ liệu...</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <section class="lg:col-span-7 space-y-6 no-print">
+                
+                <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">📦 1. Loại Container vận chuyển</label>
+                    <select id="containerSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2.5 font-medium focus:ring-2 focus:ring-slate-500 focus:outline-none">
+                        <option value="20DC">Container 20' Khô Tiêu Chuẩn (20DC)</option>
+                        <option value="40HC">Container 40' Cao (40HC)</option>
+                    </select>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 border-t-4 border-t-blue-600">
+                    <h2 class="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                        🏭 ĐIỂM ĐÓNG HÀNG (Kho đi / Nhà máy cấp vỏ)
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Chọn địa điểm đóng hàng (Toàn Quốc)</label>
+                            <select id="locStartSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Đơn giá Trucking đầu đóng</label>
+                            <input type="text" id="truckingStartInput" class="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 font-mono font-semibold" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-wrap gap-4 items-center mb-4">
+                        <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="combineStart" class="w-4 h-4 text-slate-600 rounded">
+                            Kết hợp vỏ đầu đóng (Tính 60% cước Trucking)
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 bg-blue-50/40 p-3 rounded-lg border border-blue-100 text-sm">
+                        <label class="flex items-center gap-2 cursor-pointer font-medium">
+                            <input type="checkbox" id="liftStart" checked class="w-4 h-4 text-blue-600 rounded">
+                            Phí Nâng vỏ: <span id="txtLiftStart" class="font-mono text-blue-700 ml-auto">0</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer font-medium">
+                            <input type="checkbox" id="dropStart" checked class="w-4 h-4 text-blue-600 rounded">
+                            Phí Hạ vỏ: <span id="txtDropStart" class="font-mono text-blue-700 ml-auto">0</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 border-t-4 border-t-amber-500">
+                    <h2 class="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2">
+                        🚢 CHẶNG BIỂN ĐƯỢC ĐỊNH TUYẾN TỰ ĐỘNG
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Tuyến biển tương ứng</label>
+                            <input type="text" id="autoSeaRouteInput" class="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 font-medium text-slate-700" readonly value="Vui lòng chọn điểm Đi/Đến">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Chọn Hãng Tàu khai thác</label>
+                            <select id="carrierSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-3 rounded-lg border border-amber-100 text-sm">
+                        <div>
+                            <span class="block text-xs font-medium text-slate-500 uppercase">Giá cước (Ocean Freight)</span>
+                            <input type="text" id="seaFreightInput" class="w-full bg-transparent font-mono font-bold text-amber-900 text-base mt-0.5 focus:outline-none" readonly>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-slate-500 uppercase">Lịch cập cảng (ETD)</span>
+                            <div id="scheduleOutput" class="font-medium text-slate-700 mt-1 flex items-center gap-1">📅 -</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 border-t-4 border-t-green-600">
+                    <h2 class="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
+                        🏢 ĐIỂM TRẢ HÀNG (Kho trả / Hạ bãi chỉ định)
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Chọn địa điểm trả hàng (Toàn Quốc)</label>
+                            <select id="locEndSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Đơn giá Trucking đầu trả</label>
+                            <input type="text" id="truckingEndInput" class="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 font-mono font-semibold" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-wrap gap-4 items-center mb-4">
+                        <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="combineEnd" class="w-4 h-4 text-slate-600 rounded">
+                            Kết hợp vỏ đầu trả (Tính 60% cước Trucking)
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 bg-green-50/40 p-3 rounded-lg border border-green-100 text-sm">
+                        <label class="flex items-center gap-2 cursor-pointer font-medium">
+                            <input type="checkbox" id="liftEnd" checked class="w-4 h-4 text-green-600 rounded">
+                            Phí Nâng vỏ: <span id="txtLiftEnd" class="font-mono text-green-700 ml-auto">0</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer font-medium">
+                            <input type="checkbox" id="dropEnd" checked class="w-4 h-4 text-green-600 rounded">
+                            Phí Hạ vỏ: <span id="txtDropEnd" class="font-mono text-green-700 ml-auto">0</span>
+                        </label>
+                    </div>
+                </div>
+
+            </section>
+
+            <section class="lg:col-span-5">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 sticky top-6 print-card">
+                    
+                    <div id="quotationArea">
+                        <div class="text-center border-b pb-4 mb-4">
+                            <h2 class="text-xl font-bold text-slate-800 uppercase tracking-wide">Bảng Báo Giá Cước Vận Tải</h2>
+                            <p class="text-xs text-slate-500 mt-1">Loại hình: Nguyên Container (FCL) Tuyến Nội Địa</p>
+                        </div>
+
+                        <div class="mb-5 bg-slate-50 p-3.5 rounded-lg text-xs space-y-2 border border-slate-200 text-slate-700">
+                            <div><strong>📍 Từ vị trí đóng hàng:</strong> <span id="lblLocStart" class="font-medium text-slate-900">-</span></div>
+                            <div><strong>🚢 Chặng biển kết nối:</strong> <span id="lblSeaRoute" class="font-medium text-blue-800">-</span></div>
+                            <div class="grid grid-cols-2 gap-2 bg-white p-2 rounded border border-slate-100 shadow-2xs font-semibold">
+                                <div class="text-blue-900">Hãng tàu: <span id="lblCarrier" class="font-black">-</span></div>
+                                <div class="text-amber-700 text-right">Lịch chạy: <span id="lblSchedule">-</span></div>
+                            </div>
+                            <div><strong>📍 Đến bãi trả hàng:</strong> <span id="lblLocEnd" class="font-medium text-slate-900">-</span></div>
+                            <div class="pt-1.5 border-t border-slate-200">
+                                <strong>📦 Quy cách container:</strong> Cước tính cho loại <span id="lblContainer" class="font-bold text-red-600">-</span>
+                            </div>
+                        </div>
+
+                        <table class="w-full text-left text-xs mb-6">
+                            <thead>
+                                <tr class="border-b border-slate-300 text-slate-500 uppercase tracking-wider text-[10px]">
+                                    <th class="py-2 font-semibold">Chi tiết hạng mục</th>
+                                    <th class="py-2 text-right font-semibold">Thành tiền (VND)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700 text-sm">
+                                <tr>
+                                    <td class="py-2.5 flex flex-col">
+                                        <span class="font-medium">Trucking kéo cont/vỏ đầu đóng</span>
+                                        <span id="badgeStart" class="text-[11px] text-amber-600 font-medium"></span>
+                                    </td>
+                                    <td id="valTruckingStart" class="py-2.5 text-right font-mono font-medium">0</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 text-slate-500 pl-2">↳ Chi phí phụ trợ bến bãi nâng/hạ đầu đóng</td>
+                                    <td id="valLiftDropStart" class="py-2.5 text-right font-mono text-slate-600">0</td>
+                                </tr>
+                                <tr class="bg-blue-50/40">
+                                    <td class="py-2.5 font-bold text-blue-900 flex flex-col">
+                                        <span>Cước tàu biển vận chuyển (Ocean Freight)</span>
+                                        <span id="lblCarrierSub" class="text-[10px] text-blue-700 font-normal"></span>
+                                    </td>
+                                    <td id="valSeaFreight" class="py-2.5 text-right font-mono font-bold text-blue-900">0</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 flex flex-col">
+                                        <span class="font-medium">Trucking giao hàng đầu nhận/trả</span>
+                                        <span id="badgeEnd" class="text-[11px] text-amber-600 font-medium"></span>
+                                    </td>
+                                    <td id="valTruckingEnd" class="py-2.5 text-right font-mono font-medium">0</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 text-slate-500 pl-2">↳ Chi phí phụ trợ bến bãi nâng/hạ đầu trả</td>
+                                    <td id="valLiftDropEnd" class="py-2.5 text-right font-mono text-slate-600">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="bg-slate-900 text-white p-4 rounded-xl flex justify-between items-center shadow-md">
+                            <span class="font-bold text-sm uppercase tracking-wide">Tổng cộng chi phí (Net)</span>
+                            <span id="totalPrice" class="text-2xl font-black font-mono tracking-tight">0 đ</span>
+                        </div>
+                        
+                        <p class="text-[10px] text-slate-400 mt-4 italic text-center no-print">
+                            * Giá chưa bao gồm thuế VAT và được tính tự động dựa trên vị trí địa lý của hai đầu đóng/trả.
+                        </p>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-100 no-print">
+                        <button onclick="window.print()" class="w-full bg-slate-800 hover:bg-slate-950 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer text-sm">
+                            🖨️ Tiến Hành In / Xuất File PDF Báo Giá
+                        </button>
+                    </div>
+
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // CẤU HÌNH ĐƯỜNG DẪN DỮ LIỆU TỪ GOOGLE SHEETS
+        const URL_LOCATIONS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTT6VzBoCkEY2EkXX9lcbSxd-1uMCKoWag68Lt-moN7RhCELkHzZrHUAjNY34HSRg/pub?gid=968975241&single=true&output=csv";
+        const URL_ROUTES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTT6VzBoCkEY2EkXX9lcbSxd-1uMCKoWag68Lt-moN7RhCELkHzZrHUAjNY34HSRg/pub?gid=1055331186&single=true&output=csv";
+
+        // MASTER DATABASE (Được cập nhật từ API)
+        let dbLocations = [];
+        let dbRoutesMapping = {};
+
+        // DOM ELEMENTS
+        const containerSelect = document.getElementById('containerSelect');
+        const locStartSelect = document.getElementById('locStartSelect');
+        const locEndSelect = document.getElementById('locEndSelect');
+        
+        const autoSeaRouteInput = document.getElementById('autoSeaRouteInput');
+        const carrierSelect = document.getElementById('carrierSelect');
+        const seaFreightInput = document.getElementById('seaFreightInput');
+        const scheduleOutput = document.getElementById('scheduleOutput');
+
+        const truckingStartInput = document.getElementById('truckingStartInput');
+        const combineStart = document.getElementById('combineStart');
+        const liftStart = document.getElementById('liftStart');
+        const dropStart = document.getElementById('dropStart');
+        const txtLiftStart = document.getElementById('txtLiftStart');
+        const txtDropStart = document.getElementById('txtDropStart');
+
+        const truckingEndInput = document.getElementById('truckingEndInput');
+        const combineEnd = document.getElementById('combineEnd');
+        const liftEnd = document.getElementById('liftEnd');
+        const dropEnd = document.getElementById('dropEnd');
+        const txtLiftEnd = document.getElementById('txtLiftEnd');
+        const txtDropEnd = document.getElementById('txtDropEnd');
+
+        // Giá Trị Trên Vé Báo Giá
+        const lblLocStart = document.getElementById('lblLocStart');
+        const lblLocEnd = document.getElementById('lblLocEnd');
+        const lblSeaRoute = document.getElementById('lblSeaRoute');
+        const lblCarrier = document.getElementById('lblCarrier');
+        const lblSchedule = document.getElementById('lblSchedule');
+        const lblContainer = document.getElementById('lblContainer');
+        
+        const valTruckingStart = document.getElementById('valTruckingStart');
+        const badgeStart = document.getElementById('badgeStart');
+        const valLiftDropStart = document.getElementById('valLiftDropStart');
+        
+        const valSeaFreight = document.getElementById('valSeaFreight');
+        const lblCarrierSub = document.getElementById('lblCarrierSub');
+        
+        const valTruckingEnd = document.getElementById('valTruckingEnd');
+        const badgeEnd = document.getElementById('badgeEnd');
+        const valLiftDropEnd = document.getElementById('valLiftDropEnd');
+        const totalPrice = document.getElementById('totalPrice');
+
+        // BƯỚC 3: HÀM KÉO & PARSE DỮ LIỆU TỪ GOOGLE SHEETS
+        async function fetchAndParseCSV(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("HTTP-Error: " + response.status);
+            const csvText = await response.text();
+            
+            return new Promise((resolve) => {
+                Papa.parse(csvText, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: (results) => resolve(results.data)
+                });
+            });
+        }
+
+        async function loadGoogleSheetsDatabase() {
+            try {
+                const [rawLocations, rawRoutes] = await Promise.all([
+                    fetchAndParseCSV(URL_LOCATIONS),
+                    fetchAndParseCSV(URL_ROUTES)
+                ]);
+
+                // Map Sheet 1 vào dbLocations
+                dbLocations = rawLocations.map(row => ({
+                    id: row['ID'] || row['id'],
+                    name: row['Tên kho bãi'] || row['Name'],
+                    region: row['Phân vùng'] || row['Region'],
+                    prices: {
+                        "20DC": {
+                            trucking: Number(row['Trucking 20DC'] || 0),
+                            lift: Number(row['Nâng 20DC'] || row['Nâng/Hạ 20DC'] || 0),
+                            drop: Number(row['Hạ 20DC'] || row['Nâng/Hạ 20DC'] || 0)
+                        },
+                        "40HC": {
+                            trucking: Number(row['Trucking 40HC'] || 0),
+                            lift: Number(row['Nâng 40HC'] || row['Nâng/Hạ 40HC'] || 0),
+                            drop: Number(row['Hạ 40HC'] || row['Nâng/Hạ 40HC'] || 0)
+                        }
+                    }
+                }));
+
+                // Map Sheet 2 vào dbRoutesMapping (Gộp dòng theo tuyến)
+                rawRoutes.forEach(row => {
+                    let routeKey = row['Quy tắc khớp tuyến'] || row['RouteID'];
+                    if (!routeKey) return; 
+
+                    if (!dbRoutesMapping[routeKey]) {
+                        dbRoutesMapping[routeKey] = {
+                            name: row['Tên Tuyến'] || row['Tên tuyến'] || "Tuyến tự động",
+                            carriers: []
+                        };
+                    }
+
+                    dbRoutesMapping[routeKey].carriers.push({
+                        code: row['Mã Hãng tàu'] || row['Hãng tàu'],
+                        name: row['Tên Hãng tàu'] || row['Tên Hãng Tàu'] || row['Hãng tàu'],
+                        schedule: row['Lịch chạy'] || row['Lịch Chạy'] || "Liên hệ",
+                        prices: {
+                            "20DC": Number(row['Ocean Freight 20DC'] || row['Cước 20DC'] || 0),
+                            "40HC": Number(row['Ocean Freight 40HC'] || row['Cước 40HC'] || 0)
+                        }
+                    });
+                });
+
+                document.getElementById('statusBadge').innerText = "v4.0 - Đã đồng bộ Data";
+                initApp(); // Chạy App sau khi Map xong
+
+            } catch (error) {
+                console.error("Lỗi tải Database:", error);
+                document.getElementById('statusBadge').innerText = "Lỗi kết nối Sheets!";
+                document.getElementById('statusBadge').classList.replace("bg-emerald-600", "bg-red-600");
+                alert("Lỗi khi tải dữ liệu từ Google Sheets. Vui lòng kiểm tra link CSV hoặc tên cột.");
+            }
+        }
+
+        // KHỞI TẠO ỨNG DỤNG
+        function initApp() {
+            // Render danh sách địa điểm cho cả hai đầu
+            const optionsHTML = dbLocations.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+            locStartSelect.innerHTML = optionsHTML;
+            locEndSelect.innerHTML = optionsHTML;
+
+            // Mặc định cài đặt sẵn 2 điểm khác miền để test auto-route ngay lúc đầu (Nếu có dữ liệu tương ứng)
+            if(dbLocations.length >= 2) {
+                locStartSelect.value = dbLocations[0].id;
+                locEndSelect.value = dbLocations[dbLocations.length - 1].id;
+            }
+
+            // Lắng nghe sự kiện thay đổi của các Điểm Đi / Điểm Đến để cập nhật Tuyến Đường Biển
+            locStartSelect.addEventListener('change', autoMatchSeaRoute);
+            locEndSelect.addEventListener('change', autoMatchSeaRoute);
+            containerSelect.addEventListener('change', calculateAllFreight);
+            carrierSelect.addEventListener('change', calculateAllFreight);
+
+            // LOGIC TỰ ĐỘNG BỎ TÍCH PHÍ THEO TRẠNG THÁI KẾT HỢP VỎ
+            combineStart.addEventListener('change', function() {
+                if (this.checked) {
+                    liftStart.checked = false; // Chọn kết hợp vỏ đầu đóng -> Tự động bỏ tích nâng vỏ
+                }
+                calculateAllFreight();
+            });
+
+            combineEnd.addEventListener('change', function() {
+                if (this.checked) {
+                    dropEnd.checked = false; // Chọn kết hợp vỏ đầu trả -> Tự động bỏ tích hạ vỏ
+                }
+                calculateAllFreight();
+            });
+
+            // Các triggers bến bãi thông thường
+            const checkTriggers = [liftStart, dropStart, liftEnd, dropEnd];
+            checkTriggers.forEach(elem => elem.addEventListener('change', calculateAllFreight));
+
+            autoMatchSeaRoute();
+        }
+
+        // TỰ ĐỘNG TÌM TUYẾN BIỂN KHI ĐỊA ĐIỂM THAY ĐỔI
+        function autoMatchSeaRoute() {
+            const startNode = dbLocations.find(item => item.id === locStartSelect.value);
+            const endNode = dbLocations.find(item => item.id === locEndSelect.value);
+
+            if (!startNode || !endNode) return;
+
+            const routeKey = `${startNode.region}_${endNode.region}`;
+            const targetRoute = dbRoutesMapping[routeKey];
+
+            if(!targetRoute) {
+                autoSeaRouteInput.value = "Chưa có tuyến cấu hình cho vùng này";
+                carrierSelect.innerHTML = "<option>Không có hãng tàu</option>";
+                calculateAllFreight();
+                return;
+            }
+
+            autoSeaRouteInput.value = targetRoute.name;
+
+            carrierSelect.innerHTML = targetRoute.carriers.map(c => 
+                `<option value="${c.code}">${c.name}</option>`
+            ).join('');
+
+            calculateAllFreight();
+        }
+
+        function formatVND(num) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0).replace('₫', 'đ');
+        }
+
+        // TÍNH TOÁN TOÀN BỘ CƯỚC PHÍ PHỤ THUỘC
+        function calculateAllFreight() {
+            const currentCont = containerSelect.value;
+            
+            const startObj = dbLocations.find(item => item.id === locStartSelect.value);
+            const endObj = dbLocations.find(item => item.id === locEndSelect.value);
+            
+            if(!startObj || !endObj) return;
+
+            const dataStart = startObj.prices[currentCont];
+            const dataEnd = endObj.prices[currentCont];
+
+            const routeKey = `${startObj.region}_${endObj.region}`;
+            const currentRouteData = dbRoutesMapping[routeKey];
+            let selectedCarrierData = null;
+
+            if(currentRouteData && currentRouteData.carriers) {
+                 selectedCarrierData = currentRouteData.carriers.find(c => c.code === carrierSelect.value) || currentRouteData.carriers[0];
+            }
+
+            // Hiển thị thông số chi tiết của Đầu Đóng Hàng
+            truckingStartInput.value = formatVND(dataStart.trucking);
+            txtLiftStart.innerText = formatVND(dataStart.lift);
+            txtDropStart.innerText = formatVND(dataStart.drop);
+
+            // Hiển thị thông số chi tiết của Đầu Trả Hàng
+            truckingEndInput.value = formatVND(dataEnd.trucking);
+            txtLiftEnd.innerText = formatVND(dataEnd.lift);
+            txtDropEnd.innerText = formatVND(dataEnd.drop);
+
+            // Xử lý giá cước biển từ hãng tàu đã chọn
+            let seaFreightPrice = 0;
+            if(selectedCarrierData) {
+                seaFreightPrice = selectedCarrierData.prices[currentCont];
+                seaFreightInput.value = formatVND(seaFreightPrice);
+                scheduleOutput.innerHTML = `📅 <span class="text-amber-700 font-semibold">${selectedCarrierData.schedule}</span>`;
+            } else {
+                seaFreightInput.value = formatVND(0);
+                scheduleOutput.innerHTML = `📅 -`;
+            }
+
+            // Tính toán chi phí thực tế sau Checkbox giảm trừ vỏ kết hợp
+            const coeffStart = combineStart.checked ? 0.6 : 1.0;
+            const finalTruckingStart = dataStart.trucking * coeffStart;
+            const totalLiftDropStart = (liftStart.checked ? dataStart.lift : 0) + (dropStart.checked ? dataStart.drop : 0);
+
+            const coeffEnd = combineEnd.checked ? 0.6 : 1.0;
+            const finalTruckingEnd = dataEnd.trucking * coeffEnd;
+            const totalLiftDropEnd = (liftEnd.checked ? dataEnd.lift : 0) + (dropEnd.checked ? dataEnd.drop : 0);
+
+            // Tổng giá cuối cùng
+            const finalTotal = finalTruckingStart + totalLiftDropStart + seaFreightPrice + finalTruckingEnd + totalLiftDropEnd;
+
+            // ĐỒNG BỘ DỮ LIỆU SANG THẺ BÁO GIÁ ĐỂ IN ẤN
+            lblLocStart.innerText = startObj.name;
+            lblLocEnd.innerText = endObj.name;
+            lblSeaRoute.innerText = currentRouteData ? currentRouteData.name : "Không xác định";
+            lblCarrier.innerText = selectedCarrierData ? selectedCarrierData.code : "-";
+            lblSchedule.innerText = selectedCarrierData ? selectedCarrierData.schedule : "-";
+            lblContainer.innerText = currentCont;
+
+            valTruckingStart.innerText = formatVND(finalTruckingStart);
+            badgeStart.innerText = combineStart.checked ? " (-40% kết hợp vỏ)" : " (Tiêu chuẩn)";
+            valLiftDropStart.innerText = formatVND(totalLiftDropStart);
+
+            valSeaFreight.innerText = formatVND(seaFreightPrice);
+            lblCarrierSub.innerText = selectedCarrierData ? `Hãng tàu khai thác vận chuyển: ${selectedCarrierData.name}` : "";
+
+            valTruckingEnd.innerText = formatVND(finalTruckingEnd);
+            badgeEnd.innerText = combineEnd.checked ? " (-40% kết hợp vỏ)" : " (Tiêu chuẩn)";
+            valLiftDropEnd.innerText = formatVND(totalLiftDropEnd);
+
+            totalPrice.innerText = formatVND(finalTotal);
+        }
+
+        // BẮT ĐẦU LUỒNG XỬ LÝ KHI TẢI TRANG
+        window.onload = loadGoogleSheetsDatabase;
+    </script>
+</body>
+</html>
