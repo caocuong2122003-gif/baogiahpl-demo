@@ -297,48 +297,52 @@
                 ]);
 
                 // Map Sheet 1 vào dbLocations
+                // Tên cột thực tế trong Sheet "Locations":
+                // Mã ID | Tên Địa Điểm (Kho đi/về) | Vùng (Region) | Trucking 20DC | Nâng vỏ 20DC | Hạ vỏ 20DC | Trucking 40HC | Nâng vỏ 40HC | Hạ vỏ 40HC
                 dbLocations = rawLocations.map(row => ({
-                    id: row['ID'] || row['id'],
-                    name: row['Tên kho bãi'] || row['Name'],
-                    region: row['Phân vùng'] || row['Region'],
+                    id: row['Mã ID'] || row['ID'] || row['id'],
+                    name: row['Tên Địa Điểm (Kho đi/về)'] || row['Tên kho bãi'] || row['Name'],
+                    region: row['Vùng (Region)'] || row['Phân vùng'] || row['Region'],
                     prices: {
                         "20DC": {
                             trucking: Number(row['Trucking 20DC'] || 0),
-                            lift: Number(row['Nâng 20DC'] || row['Nâng/Hạ 20DC'] || 0),
-                            drop: Number(row['Hạ 20DC'] || row['Nâng/Hạ 20DC'] || 0)
+                            lift: Number(row['Nâng vỏ 20DC'] || row['Nâng 20DC'] || row['Nâng/Hạ 20DC'] || 0),
+                            drop: Number(row['Hạ vỏ 20DC'] || row['Hạ 20DC'] || row['Nâng/Hạ 20DC'] || 0)
                         },
                         "40HC": {
                             trucking: Number(row['Trucking 40HC'] || 0),
-                            lift: Number(row['Nâng 40HC'] || row['Nâng/Hạ 40HC'] || 0),
-                            drop: Number(row['Hạ 40HC'] || row['Nâng/Hạ 40HC'] || 0)
+                            lift: Number(row['Nâng vỏ 40HC'] || row['Nâng 40HC'] || row['Nâng/Hạ 40HC'] || 0),
+                            drop: Number(row['Hạ vỏ 40HC'] || row['Hạ 40HC'] || row['Nâng/Hạ 40HC'] || 0)
                         }
                     }
-                }));
+                })).filter(item => item.id); // bỏ qua dòng trống không có ID
 
                 // Map Sheet 2 vào dbRoutesMapping (Gộp dòng theo tuyến)
+                // Tên cột thực tế trong Sheet "Routes":
+                // Mã Định Tuyến | Tên Tuyến Đường Biển | Mã Hãng Tàu | Tên Hãng Tàu Khai Thác | Lịch Chạy (ETD) | Cước Biển 20DC | Cước Biển 40HC
                 rawRoutes.forEach(row => {
-                    let routeKey = row['Quy tắc khớp tuyến'] || row['RouteID'];
+                    let routeKey = row['Mã Định Tuyến'] || row['Quy tắc khớp tuyến'] || row['RouteID'];
                     if (!routeKey) return; 
 
                     if (!dbRoutesMapping[routeKey]) {
                         dbRoutesMapping[routeKey] = {
-                            name: row['Tên Tuyến'] || row['Tên tuyến'] || "Tuyến tự động",
+                            name: row['Tên Tuyến Đường Biển'] || row['Tên Tuyến'] || row['Tên tuyến'] || "Tuyến tự động",
                             carriers: []
                         };
                     }
 
                     dbRoutesMapping[routeKey].carriers.push({
-                        code: row['Mã Hãng tàu'] || row['Hãng tàu'],
-                        name: row['Tên Hãng tàu'] || row['Tên Hãng Tàu'] || row['Hãng tàu'],
-                        schedule: row['Lịch chạy'] || row['Lịch Chạy'] || "Liên hệ",
+                        code: row['Mã Hãng Tàu'] || row['Mã Hãng tàu'] || row['Hãng tàu'],
+                        name: row['Tên Hãng Tàu Khai Thác'] || row['Tên Hãng tàu'] || row['Tên Hãng Tàu'] || row['Hãng tàu'],
+                        schedule: row['Lịch Chạy (ETD)'] || row['Lịch chạy'] || row['Lịch Chạy'] || "Liên hệ",
                         prices: {
-                            "20DC": Number(row['Ocean Freight 20DC'] || row['Cước 20DC'] || 0),
-                            "40HC": Number(row['Ocean Freight 40HC'] || row['Cước 40HC'] || 0)
+                            "20DC": Number(row['Cước Biển 20DC'] || row['Ocean Freight 20DC'] || row['Cước 20DC'] || 0),
+                            "40HC": Number(row['Cước Biển 40HC'] || row['Ocean Freight 40HC'] || row['Cước 40HC'] || 0)
                         }
                     });
                 });
 
-                document.getElementById('statusBadge').innerText = "v4.0 - Đã đồng bộ Data";
+                document.getElementById('statusBadge').innerText = "v4.1 - Đã đồng bộ Data";
                 initApp(); // Chạy App sau khi Map xong
 
             } catch (error) {
